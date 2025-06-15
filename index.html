@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>File Manager</title>
+<!-- Added SheetJS for Excel preview -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Added highlight.js for code syntax highlighting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/highlight.min.js"></script>
+<!-- Added Google Fonts Just Coz I like it  -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.0.0/mammoth.browser.min.js"></script>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    /* NEW color palette (U can modify acc to your will)*/
+    --primary-color: #4f46e5;
+    --primary-light: #818cf8;
+    --primary-dark: #3730a3;
+    --bg-color: #f9fafb;
+    --sidebar-bg: #ffffff;
+    --text-color: #1f2937;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --hover-bg: #eff6ff;
+    --card-bg: #ffffff;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+  }
+
+  body, html {
+    height: 100%;
+    background: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+
+  /* Header Styles */
+  h1 {
+    height: 70px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    display: flex;
+    padding: 0 20px;
+    font-weight: 700;
+    font-size: 1.75rem;
+    color: white;
+    justify-content: center;
+    align-items: center;
+    box-shadow: var(--shadow-md);
+    letter-spacing: 0.5px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+  }
+
+  /* Main container */
+  .container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: var(--bg-color);
+    position: relative;
+  }
+
+  /* Sidebar Styles */
+  .sidebar {
+    width: 280px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+  }
+
+  .sidebar-header {
+    padding: 20px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--primary-color);
+    background: linear-gradient(to right, rgba(79, 70, 229, 0.1), transparent);
+  }
+
+  .folder-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 0;
+  }
+
+  .folder-item {
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    margin: 4px 8px;
+    border-radius: var(--radius-md);
+    position: relative;
+  }
+
+  .folder-item:hover {
+    background: var(--hover-bg);
+    transform: translateX(4px);
+  }
+
+  .folder-item.active {
+    background: var(--hover-bg);
+    font-weight: 600;
+    color: var(--primary-color);
+  }
+
+  .folder-item.match {  
+    background: #eff6ff;
+    border-left: 3px solid var(--primary-color);
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(-10px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .folder-item.match:hover,
+  .folder-item.match.active {
+    background: #dbeafe;
+  }
+
+  .folder-item span.name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    margin-right: 12px;
+  }
+
+  .folder-item-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: var(--transition);
+  }
+
+  .folder-item:hover .folder-item-actions {
+    opacity: 1;
+  }
+
+  .folder-item button {
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    line-height: 1;
+    user-select: none;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+  }
+
+  .folder-item button:hover {
+    background: rgba(79, 70, 229, 0.1);
+    transform: scale(1.1);
+  }
+
+  .add-folder-btn {
+    margin: 16px;
+    padding: 12px;
+    border: none;
+    background: var(--primary-color);
+    color: white;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .add-folder-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Main panel */
+  .main-panel {
+    flex: 1;
+    background: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 20px;
+  }
+
+  /* Top controls */
+  .top-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card-bg);
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    transition: var(--transition);
+    background: var(--bg-color);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .voice-search-btn {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .voice-search-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .voice-search-btn.listening {
+    background: var(--primary-dark);
+    animation: pulse 1.5s infinite;
+  }
+
+  .upload-btn {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 12px 20px;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .upload-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Hide file input */
+  #fileInput {
+    display: none;
+  }
+
+  /* File grid */
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 24px;
+    overflow-y: auto;
+    flex: 1;
+    padding: 16px;
+    align-content: start;
+  }
+
+  /* File card */
+  .file-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    user-select: none;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .file-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-light);
+  }
+
+  .file-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), transparent);
+    opacity: 0;
+    transition: var(--transition);
+  }
+
+  .file-card:hover::before {
+    opacity: 1;
+  }
+
+  .file-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--primary-color);
+    transition: var(--transition);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  }
+
+  .file-card:hover .file-icon {
+    transform: scale(1.1);
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+  }
+
+  .file-name {
+    font-weight: 500;
+    text-align: center;
+    font-size: 0.9rem;
+    word-break: break-word;
+    color: var(--text-color);
+    line-height: 1.4;
+    max-width: 100%;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin-bottom: 12px;
+  }
+
+  .file-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: var(--transition);
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px;
+    border-radius: var(--radius-md);
+    backdrop-filter: blur(4px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .file-card:hover .file-actions {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
+  }
+
+  .file-actions button {
+    border: none;
+    background: transparent;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .file-actions button:hover {
+    background: rgba(79, 70, 229, 0.1);
+    transform: scale(1.1);
+  }
+
+  /* Preview modal */
+  #previewModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+
+  #previewModal.active {
+    display: flex;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  #previewContent {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    max-width: 90vw;
+    max-height: 90vh;
+    padding: 24px;
+    overflow: auto;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  @keyframes scaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  #previewContent img,
+  #previewContent iframe,
+  #previewContent pre,
+  #previewContent .excel-preview {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+  }
+
+  #previewContent pre {
+    padding: 16px;
+    background: #f8f9fa;
+    overflow: auto;
+    width: 100%;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 14px;
+  }
+
+  #previewContent .excel-preview {
+    width: 100%;
+    overflow: auto;
+    padding: 16px;
+    background: white;
+  }
+
+  #previewContent .excel-preview table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  #previewContent .excel-preview th,
+  #previewContent .excel-preview td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  #previewContent .excel-preview th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+  }
+
+  #previewContent .excel-preview tr:nth-child(even) {
+    background-color: #f9fafb;
+  }
+
+  #previewTitle {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-color);
+    text-align: center;
+    width: 100%;
+  }
+
+  #previewCloseBtn {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+  }
+
+  #previewCloseBtn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-color);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container {
+      flex-direction: column;
+    }
+
+    .sidebar {
+      width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .folder-list {
+      display: flex;
+      padding: 12px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      gap: 8px;
+    }
+
+    .folder-item {
+      min-width: 160px;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      display: none;
+    }
+
+    .main-panel {
+      padding: 16px;
+    }
+
+    .top-controls {
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .search-input {
+      width: 100%;
+    }
+
+    .file-grid {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 16px;
+      padding: 12px;
+    }
+
+    .file-card {
+      padding: 16px 12px;
+    }
+
+    .file-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+    }
+
+    .file-name {
+      font-size: 0.8rem;
+    }
+
+    .file-actions {
+      padding: 6px;
+      gap: 6px;
+    }
+
+    .file-actions button {
+      font-size: 1rem;
+      padding: 4px;
+    }
+  }
+
+  /* Loading animation */
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+  }
+
+  /* Loading spinner */
+  .loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(79, 70, 229, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+    margin: 0 auto;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Session Controls */
+  .session-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .session-btn {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 12px 16px;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .session-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .session-btn.clear-data {
+    background: #ef4444;
+  }
+
+  .session-btn.clear-data:hover {
+    background: #dc2626;
+  }
+
+  @media (max-width: 768px) {
+    .session-controls {
+      flex-direction: column;
+      width: 100%;
+    }
+    
+    .session-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+</head>
+<!-- Main page content starts here -->
+<body>
+
+<h1>📂 File Manager</h1>
+
+<div class="container">
+  <!-- Sidebar with folder list and add folder button -->
+<aside class="sidebar">
+    <div class="sidebar-header">Folders</div>
+    <div class="folder-list" id="folderList"></div>
+    <button class="add-folder-btn" onclick="addFolder()" id="addFolderBtn">+ New Folder</button>
+  </aside>
+
+  <!-- Main panel to show files and controls -->
+<section class="main-panel">
+    <div class="top-controls">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search files..."
+        id="searchInput"
+        oninput="renderFiles()"
+        aria-label="Search files"
+      />
+      <button class="voice-search-btn" id="voiceSearchBtn" title="Voice Search">
+        🎤 Voice Search
+      </button>
+      <label for="fileInput" class="upload-btn" tabindex="0" id="uploadLabel">Upload Files</label>
+      <input type="file" id="fileInput" multiple onchange="uploadFiles(event)" aria-label="Upload files" />
+      <!-- Buttons to start a new session or clear data -->
+<div class="session-controls">
+        <button class="session-btn new-session" onclick="startNewSession()" title="Start a new session">
+          🆕 New Session
+        </button>
+        <button class="session-btn clear-data" onclick="clearAllData()" title="Clear all saved data">
+          🗑️ Clear All Data
+        </button>
+      </div>
+    </div>
+
+    <div class="file-grid" id="fileGrid">
+      <!-- Files will appear here -->
+    </div>
+  </section>
+</div>
+
+<!-- Preview Modal -->
+<!-- Modal popup for previewing files -->
+<div id="previewModal" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+  <div id="previewContent">
+    <h2 id="previewTitle"></h2>
+    <div id="previewBody"></div>
+    <button id="previewCloseBtn" onclick="closePreview()">Close Preview</button>
+  </div>
+</div>
+
+<!-- JavaScript functionality for folder, file, upload, voice search, etc. -->
+<script>
+  // Data structures
+  let folders = [
+    { name: "Trash", isTrash: true, files: [] }, // Trash special folder
+    { name: "My Folder", files: [] }
+  ];
+  let selectedFolderIndex = 1; // Default Folder
+  let searchTerm = "";
+  let matchingFolderIndices = new Set(); // Track folders that match search
+
+  // References
+  const folderListEl = document.getElementById("folderList");
+  const fileGridEl = document.getElementById("fileGrid");
+  const searchInput = document.getElementById("searchInput");
+  const fileInput = document.getElementById("fileInput");
+  const previewModal = document.getElementById("previewModal");
+  const previewBody = document.getElementById("previewBody");
+  const previewTitle = document.getElementById("previewTitle");
+  const voiceSearchBtn = document.getElementById("voiceSearchBtn");
+
+  // Voice search functionality
+  let recognition = null;
+  let isListening = false;
+
+  // Initialize speech recognition (webkit only for localhost)
+  function initSpeechRecognition() {
+    // Only use webkitSpeechRecognition for localhost testing
+    if ('webkitSpeechRecognition' in window) {
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isListening = true;
+        voiceSearchBtn.classList.add('listening');
+        voiceSearchBtn.textContent = '🎤 Listening...';
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        voiceSearchBtn.classList.remove('listening');
+        voiceSearchBtn.textContent = '🎤 Voice Search';
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        searchInput.value = transcript;
+        performSearch();
+      };
+
+      recognition.onerror = (event) => {
+        isListening = false;
+        voiceSearchBtn.classList.remove('listening');
+        voiceSearchBtn.textContent = '🎤 Voice Search';
+        if (event.error === 'not-allowed' || event.error === 'aborted') {
+          alert('Microphone access denied or not available. Please allow microphone access in your browser settings.');
+        } else {
+          alert('Speech recognition error: ' + event.error);
+        }
+      };
+    } else {
+      voiceSearchBtn.style.display = 'none';
+      alert('Voice search is not supported in this browser. Please use Chrome or Safari on desktop for testing.');
+    }
+  }
+
+  // Toggle voice search
+  function toggleVoiceSearch() {
+    if (!recognition) initSpeechRecognition();
+    if (isListening) recognition.stop();
+    else recognition.start();
+  }
+
+  // Click handler for voice search button
+  voiceSearchBtn.addEventListener('click', toggleVoiceSearch);
+
+  // Add new folder (except Trash)
+  function addFolder() {
+    const name = prompt("Enter new folder name:");
+    if(!name || !name.trim()) return alert("Folder name cannot be empty.");
+    const trimmedName = name.trim();
+
+    // Prevent duplicate folder names
+    if(folders.some(f => f.name.toLowerCase() === trimmedName.toLowerCase())) {
+      return alert("Folder name already exists.");
+    }
+
+    folders.push({ name: trimmedName, files: [] });
+    selectedFolderIndex = folders.length - 1;
+    renderFolders();
+    renderFiles();
+    saveToLocalStorage();
+  }
+
+  // Rename folder function
+  function renameFolder(folderIdx) {
+    if(folderIdx === 0) return alert("Cannot rename the Trash folder.");
+
+    const folder = folders[folderIdx];
+    const newName = prompt("Rename folder:", folder.name);
+
+    if(!newName || !newName.trim()) return;
+    const trimmedName = newName.trim();
+
+    // Check for duplicate names
+    if(trimmedName.toLowerCase() === folder.name.toLowerCase()) return; // No change
+    if(folders.some(f => f.name.toLowerCase() === trimmedName.toLowerCase())) {
+      return alert("A folder with this name already exists.");
+    }
+
+    // Update folder name
+    folder.name = trimmedName;
+
+    // Update originalFolder reference in trash for any files
+    folders[0].files.forEach(file => {
+      if(file.originalFolder === folder.name) {
+        file.originalFolder = trimmedName;
+      }
+    });
+
+    renderFolders();
+    saveToLocalStorage();
+  }
+
+  // Render folder list
+  function renderFolders() {
+    folderListEl.innerHTML = "";
+    folders.forEach((folder, idx) => {
+      const item = document.createElement("div");
+      const isMatch = matchingFolderIndices.has(idx);
+      item.className = "folder-item" + 
+        (idx === selectedFolderIndex ? " active" : "") +
+        (isMatch ? " match" : "");
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", 0);
+      item.title = folder.name;
+      item.onclick = () => {
+        selectedFolderIndex = idx;
+        renderFolders();
+        renderFiles();
+      };
+      item.onkeydown = (e) => {
+        if(e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          item.click();
+        }
+      };
+
+      // Folder name span
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "name";
+      nameSpan.textContent = folder.name + (folder.isTrash ? " 🗑️" : "");
+      item.appendChild(nameSpan);
+
+      // Show actions for folders except Trash
+      if(!folder.isTrash) {
+        const actionsDiv = document.createElement("div");
+        actionsDiv.className = "folder-item-actions";
+
+        // Rename button
+        const renameBtn = document.createElement("button");
+        renameBtn.title = `Rename folder "${folder.name}"`;
+        renameBtn.textContent = "✏️";
+        renameBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          renameFolder(idx);
+        };
+        actionsDiv.appendChild(renameBtn);
+
+        // Delete button
+        const delBtn = document.createElement("button");
+        delBtn.title = `Delete folder "${folder.name}" (moves all files to Trash)`;
+        delBtn.textContent = "🗑️";
+        delBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          if(confirm(`Delete folder "${folder.name}"? This will move all its files to Trash.`)) {
+            moveFolderToTrash(idx);
+          }
+        };
+        actionsDiv.appendChild(delBtn);
+
+        item.appendChild(actionsDiv);
+      }
+
+      folderListEl.appendChild(item);
+    });
+  }
+
+  // Move folder and its files to Trash folder
+  function moveFolderToTrash(folderIdx) {
+    if(folderIdx === 0) return; // Trash folder itself
+
+    const folder = folders[folderIdx];
+    const trash = folders[0];
+
+    // Move files to trash.files, keep track of original folder name for restore
+    folder.files.forEach(fileObj => {
+      trash.files.push({...fileObj, originalFolder: folder.name});
+    });
+
+    // Remove folder
+    folders.splice(folderIdx, 1);
+
+    // If we deleted the selected folder, select the first non-trash folder
+    if(folderIdx === selectedFolderIndex) {
+      selectedFolderIndex = folders.findIndex(f => !f.isTrash);
+      if(selectedFolderIndex === -1) selectedFolderIndex = 0; // Fallback to trash if no other folders
+    } else if(folderIdx < selectedFolderIndex) {
+      selectedFolderIndex--; // Adjust index if we deleted a folder before the selected one
+    }
+
+    renderFolders();
+    renderFiles();
+    saveToLocalStorage();
+  }
+
+  // Upload files to current folder (except Trash, disable upload in Trash)
+  function uploadFiles(event) {
+    if(selectedFolderIndex === 0) {
+      alert("Cannot upload files directly to Trash.");
+      fileInput.value = "";
+      return;
+    }
+    const filesList = Array.from(event.target.files);
+    if(!filesList.length) return;
+
+    const folder = folders[selectedFolderIndex];
+    
+    // Check for duplicate file names before uploading
+    const duplicates = [];
+    filesList.forEach(file => {
+      if(folder.files.some(f => f.name.toLowerCase() === file.name.toLowerCase())) {
+        duplicates.push(file.name);
+      } else {
+        folder.files.push({ name: file.name, file: file });
+      }
+    });
+    
+    if(duplicates.length > 0) {
+      alert(`The following files already exist and were not added: ${duplicates.join(', ')}`);
+    }
+
+    fileInput.value = ""; // reset file input
+    renderFiles();
+    saveToLocalStorage();
+  }
+
+  // Rename file function
+  function renameFile(fileObj) {
+    const newName = prompt("Rename file:", fileObj.name);
+    if(!newName || !newName.trim()) return;
+
+    const trimmedName = newName.trim();
+    if(trimmedName === fileObj.name) return; // No change
+
+    // Check for duplicate names in current folder
+    const folder = folders[selectedFolderIndex];
+    if(folder.files.some(f => f !== fileObj && f.name.toLowerCase() === trimmedName.toLowerCase())) {
+      return alert("A file with this name already exists in this folder.");
+    }
+
+    fileObj.name = trimmedName;
+    renderFiles();
+    saveToLocalStorage();
+  }
+
+  // Search across all folders and files
+  function performSearch() {
+    searchTerm = searchInput.value.trim().toLowerCase();
+    matchingFolderIndices.clear();
+
+    if (searchTerm) {
+      // Search through folders
+      folders.forEach((folder, idx) => {
+        if (folder.name.toLowerCase().includes(searchTerm)) {
+          matchingFolderIndices.add(idx);
+        }
+      });
+    }
+
+    renderFolders();
+    renderFiles();
+  }
+
+  // Update search input handler
+  searchInput.addEventListener('input', performSearch);
+
+  // Render files in selected folder with search
+  function renderFiles() {
+    fileGridEl.innerHTML = "";
+    searchTerm = searchInput.value.trim().toLowerCase();
+
+    if(selectedFolderIndex === 0) {
+      // Trash folder files display with restore & perm delete buttons
+      const trashFolder = folders[0];
+      if(trashFolder.files.length === 0) {
+        const emptyState = document.createElement("div");
+        emptyState.className = "empty-state";
+        emptyState.textContent = "Trash is empty.";
+        fileGridEl.appendChild(emptyState);
+        return;
+      }
+      trashFolder.files.forEach((fileObj, i) => {
+        const card = createFileCard(fileObj, true);
+        fileGridEl.appendChild(card);
+      });
+    } else {
+      const folder = folders[selectedFolderIndex];
+      let filesToShow = folder.files;
+
+      if(searchTerm) {
+        filesToShow = filesToShow.filter(f => f.name.toLowerCase().includes(searchTerm));
+      }
+      if(filesToShow.length === 0) {
+        const emptyState = document.createElement("div");
+        emptyState.className = "empty-state";
+        emptyState.textContent = searchTerm ? "No matching files found." : "No files in this folder.";
+        fileGridEl.appendChild(emptyState);
+        return;
+      }
+      filesToShow.forEach(fileObj => {
+        const card = createFileCard(fileObj, false);
+        fileGridEl.appendChild(card);
+      });
+    }
+  }
+
+  // Create a file card element, isTrash indicates special buttons
+  function createFileCard(fileObj, isTrash) {
+    const card = document.createElement("div");
+    card.className = "file-card";
+
+    // Icon based on file extension
+    const ext = fileObj.name.split('.').pop().toLowerCase();
+    let icon = "📄";
+    
+    // Enhanced file type icons
+    if(['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) icon = "🖼️";
+    else if(['pdf'].includes(ext)) icon = "📕";
+    else if(['txt','md'].includes(ext)) icon = "📝";
+    else if(['json','js','ts','jsx','tsx'].includes(ext)) icon = "📦";
+    else if(['css','scss','less','html','xml'].includes(ext)) icon = "🎨";
+    else if(['zip','rar','7z','tar','gz'].includes(ext)) icon = "🗜️";
+    else if(['mp3','wav','ogg','flac'].includes(ext)) icon = "🎵";
+    else if(['mp4','mov','avi','mkv','webm'].includes(ext)) icon = "🎬";
+    else if(['doc','docx'].includes(ext)) icon = "📘";
+    else if(['xls','xlsx','csv'].includes(ext)) icon = "📊";
+    else if(['ppt','pptx'].includes(ext)) icon = "📊";
+    else if(['exe','msi','app'].includes(ext)) icon = "⚙️";
+
+    const iconElem = document.createElement("div");
+    iconElem.className = "file-icon";
+    iconElem.textContent = icon;
+
+    const nameElem = document.createElement("div");
+    nameElem.className = "file-name";
+    nameElem.textContent = fileObj.name;
+    nameElem.title = fileObj.name;
+
+    const actions = document.createElement("div");
+    actions.className = "file-actions";
+
+    if(isTrash) {
+      // Restore button
+      const restoreBtn = document.createElement("button");
+      restoreBtn.title = "Restore file";
+      restoreBtn.textContent = "♻️";
+      restoreBtn.onclick = () => {
+        restoreFileFromTrash(fileObj);
+      };
+      actions.appendChild(restoreBtn);
+
+      // Permanently delete button
+      const permDelBtn = document.createElement("button");
+      permDelBtn.title = "Permanently delete";
+      permDelBtn.textContent = "❌";
+      permDelBtn.onclick = () => {
+        if(confirm(`Permanently delete "${fileObj.name}"? This cannot be undone.`)) {
+          deleteFilePermanently(fileObj);
+        }
+      };
+      actions.appendChild(permDelBtn);
+
+    } else {
+      // Preview button
+      const previewBtn = document.createElement("button");
+      previewBtn.title = "Preview file";
+      previewBtn.textContent = "🔍";
+      previewBtn.onclick = () => previewFile(fileObj);
+      actions.appendChild(previewBtn);
+
+      // Rename button
+      const renameBtn = document.createElement("button");
+      renameBtn.title = "Rename file";
+      renameBtn.textContent = "✏️";
+      renameBtn.onclick = () => renameFile(fileObj);
+      actions.appendChild(renameBtn);
+
+      // Delete button (move to Trash)
+      const delBtn = document.createElement("button");
+      delBtn.title = "Delete file (move to Trash)";
+      delBtn.textContent = "🗑️";
+      delBtn.onclick = () => {
+        if(confirm(`Delete file "${fileObj.name}"? It will move to Trash.`)) {
+          moveFileToTrash(fileObj);
+        }
+      };
+      actions.appendChild(delBtn);
+    }
+
+    card.appendChild(iconElem);
+    card.appendChild(nameElem);
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  // Move a file to Trash folder
+  function moveFileToTrash(fileObj) {
+    if(selectedFolderIndex === 0) return; // no deleting inside Trash here
+    const folder = folders[selectedFolderIndex];
+    const trash = folders[0];
+
+    // Remove from current folder
+    const idx = folder.files.indexOf(fileObj);
+    if(idx !== -1) {
+      folder.files.splice(idx, 1);
+      trash.files.push({...fileObj, originalFolder: folder.name});
+      renderFiles();
+      saveToLocalStorage();
+    }
+  }
+
+  // Restore file from Trash to its original folder (or "My Folder" if original missing)
+  function restoreFileFromTrash(fileObj) {
+    const trash = folders[0];
+    const idx = trash.files.indexOf(fileObj);
+    if(idx === -1) return;
+
+    // Find original folder
+    let originalFolder = folders.find(f => f.name === fileObj.originalFolder);
+    if(!originalFolder || originalFolder.isTrash) {
+      originalFolder = folders.find(f => !f.isTrash); // fallback to first normal folder
+    }
+    if(!originalFolder) {
+      // If no folder, create default one
+      folders.push({ name: "My Folder", files: [] });
+      originalFolder = folders[folders.length-1];
+    }
+
+    // Remove from Trash
+    trash.files.splice(idx, 1);
+    // Add to original folder
+    originalFolder.files.push({ name: fileObj.name, file: fileObj.file });
+
+    // Select original folder and refresh
+    selectedFolderIndex = folders.indexOf(originalFolder);
+    renderFolders();
+    renderFiles();
+    saveToLocalStorage();
+  }
+
+  // Permanently delete file from Trash
+  function deleteFilePermanently(fileObj) {
+    const trash = folders[0];
+    const idx = trash.files.indexOf(fileObj);
+    if(idx !== -1) {
+      trash.files.splice(idx, 1);
+      renderFiles();
+      saveToLocalStorage();
+    }
+  }
+
+  // Enhanced file preview modal logic with support for more file types
+  function previewFile(fileObj) {
+    const file = fileObj.file;
+    if (!file) {
+      previewTitle.textContent = fileObj.name;
+      previewBody.textContent = "File data is not available for preview.";
+      openPreview();
+      return;
+    }
+    
+    const ext = fileObj.name.split('.').pop().toLowerCase();
+    previewTitle.textContent = fileObj.name;
+    previewBody.innerHTML = ''; // Clear previous content
+
+    // Show loading indicator
+    const loadingSpinner = document.createElement("div");
+    loadingSpinner.className = "loading-spinner";
+    previewBody.appendChild(loadingSpinner);
+    openPreview();
+
+    // Process different file types
+    if(['jpg','jpeg','png','gif','bmp','webp','svg'].includes(ext)) {
+      // Image preview
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(file);
+      img.alt = fileObj.name;
+      img.onload = () => {
+        previewBody.innerHTML = '';
+        previewBody.appendChild(img);
+        URL.revokeObjectURL(img.src); // Prevent memory leaks
+      };
+      img.onerror = () => {
+        previewBody.innerHTML = '';
+        previewBody.textContent = "Error loading image.";
+      };
+    } 
+    else if(ext === 'pdf') {
+      // PDF preview using <embed> for better compatibility
+      const embed = document.createElement("embed");
+      embed.src = URL.createObjectURL(file);
+      embed.type = "application/pdf";
+      embed.width = "800";
+      embed.height = "600";
+      embed.title = fileObj.name;
+
+      // Remove spinner and show embed immediately
+      previewBody.innerHTML = '';
+      previewBody.appendChild(embed);
+
+      // Optionally, add a fallback message
+      const fallback = document.createElement("div");
+      fallback.style.marginTop = "16px";
+      fallback.style.textAlign = "center";
+      fallback.innerHTML = `
+        <p>If the PDF does not display, <a href="${embed.src}" download="${fileObj.name}" class="upload-btn" style="display:inline-block;margin-top:8px;">Download PDF</a></p>
+      `;
+      previewBody.appendChild(fallback);
+    } 
+    else if(['mp4','webm','ogg'].includes(ext)) {
+      // Video preview
+      const video = document.createElement("video");
+      video.src = URL.createObjectURL(file);
+      video.controls = true;
+      video.style.maxWidth = "100%";
+      video.style.maxHeight = "70vh";
+      video.onloadeddata = () => {
+        previewBody.innerHTML = '';
+        previewBody.appendChild(video);
+      };
+      video.onerror = () => {
+        previewBody.innerHTML = '';
+        previewBody.textContent = "Error loading video.";
+        URL.revokeObjectURL(video.src);
+      };
+    }
+    else if(['mp3','wav'].includes(ext)) {
+      // Audio preview
+      const audio = document.createElement("audio");
+      audio.src = URL.createObjectURL(file);
+      audio.controls = true;
+      audio.style.width = "100%";
+      audio.onloadeddata = () => {
+        previewBody.innerHTML = '';
+        previewBody.appendChild(audio);
+      };
+      audio.onerror = () => {
+        previewBody.innerHTML = '';
+        previewBody.textContent = "Error loading audio.";
+        URL.revokeObjectURL(audio.src);
+      };
+    }
+    else if(['xlsx', 'xls'].includes(ext)) {
+      // Excel preview using SheetJS
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+          
+          // Get first sheet
+          const firstSheet = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheet];
+          
+          // Convert to HTML table
+          const htmlTable = XLSX.utils.sheet_to_html(worksheet, {id: 'excel-table'});
+          
+          // Create container
+          const excelContainer = document.createElement('div');
+          excelContainer.className = 'excel-preview';
+          excelContainer.innerHTML = htmlTable;
+          
+          previewBody.innerHTML = '';
+          previewBody.appendChild(excelContainer);
+        } catch (err) {
+          previewBody.innerHTML = '';
+          previewBody.textContent = "Error parsing Excel file: " + err.message;
+        }
+      };
+      reader.onerror = () => {
+        previewBody.innerHTML = '';
+        previewBody.textContent = "Error reading Excel file.";
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    else if(['csv'].includes(ext)) {
+      // CSV preview
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+          const lines = content.split('\n');
+          
+          // Create table
+          const table = document.createElement('table');
+          table.className = 'csv-table';
+          
+          // Process header and rows
+          lines.forEach((line, index) => {
+            if (!line.trim()) return; // Skip empty lines
+            
+            const row = document.createElement('tr');
+            const cells = line.split(',');
+            
+            cells.forEach(cell => {
+              const cellElement = document.createElement(index === 0 ? 'th' : 'td');
+              cellElement.textContent = cell.trim().replace(/^"|"$/g, ''); // Remove quotes
+              row.appendChild(cellElement);
+            });
+            
+            table.appendChild(row);
+          });
+          
+          const csvContainer = document.createElement('div');
+          csvContainer.className = 'excel-preview'; // Reuse Excel styling
+          csvContainer.appendChild(table);
+          
+          previewBody.innerHTML = '';
+          previewBody.appendChild(csvContainer);
+        } catch (err) {
+          previewBody.innerHTML = '';
+          previewBody.textContent = "Error parsing CSV file: " + err.message;
+        }
+      };
+      reader.onerror = () => {
+        previewBody.innerHTML = '';
+        previewBody.textContent = "Error reading CSV file.";
+      };
+      reader.readAsText(file);
+    }
+    else if(['txt','md','json','js','css','html','xml','ts','jsx','tsx'].includes(ext)) {
+      // Text file preview with syntax highlighting for code
+      const reader = new FileReader();
+      reader.onload = () => {
+        const pre = document.createElement("pre");
+        const code = document.createElement("code");
+        
+        // Set language class for syntax highlighting
+        if(['js','jsx'].includes(ext)) code.className = "language-javascript";
+        else if(['ts','tsx'].includes(ext)) code.className = "language-typescript";
+        else if(['html','xml'].includes(ext)) code.className = "language-html";
+        else if(['css'].includes(ext)) code.className = "language-css";
+        else if(['json'].includes(ext)) code.className = "language-json";
+        else if(['md'].includes(ext)) code.className = "language-markdown";
+        else code.className = "language-plaintext";
+        
+        code.textContent = reader.result;
+        pre.appendChild(code);
+        
+        previewBody.innerHTML = '';
+        previewBody.appendChild(pre);
+        
+        // Apply syntax highlighting if it's a code file
+        if(['js','jsx','ts','tsx','html','xml','css','json','md'].includes(ext)) {
+          hljs.highlightAll();
+        }
+      };
+      reader.onerror = () => {
+        previewBody.innerHTML = '';
+        previewBody.textContent = "Error reading text file.";
+      };
+      reader.readAsText(file);
+    }
+    else if(['doc', 'docx'].includes(ext)) {
+      // Try to preview .docx using mammoth.js, fallback to download
+      if (ext === 'docx' && window.mammoth) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          mammoth.convertToHtml({arrayBuffer: e.target.result})
+            .then(function(result) {
+              previewBody.innerHTML = '<div style="max-height:60vh;overflow:auto;">' + result.value + '</div>';
+            })
+            .catch(function(err) {
+              previewBody.innerHTML = 'Error previewing DOCX: ' + err.message;
+            });
+        };
+        reader.onerror = () => {
+          previewBody.innerHTML = 'Error reading DOCX file.';
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        // Fallback: download link
+        previewBody.innerHTML = '';
+        const docMessage = document.createElement("div");
+        docMessage.style.textAlign = "center";
+        docMessage.style.padding = "20px";
+        const docIcon = document.createElement("div");
+        docIcon.textContent = "📘";
+        docIcon.style.fontSize = "48px";
+        docMessage.appendChild(docIcon);
+        const message = document.createElement("p");
+        message.textContent = "Word document preview is not available.";
+        message.style.margin = "16px 0";
+        docMessage.appendChild(message);
+        const downloadLink = document.createElement("a");
+        downloadLink.href = URL.createObjectURL(file);
+        downloadLink.download = fileObj.name;
+        downloadLink.textContent = "Download Document";
+        downloadLink.className = "upload-btn";
+        downloadLink.style.display = "inline-block";
+        downloadLink.style.textDecoration = "none";
+        docMessage.appendChild(downloadLink);
+        previewBody.appendChild(docMessage);
+      }
+    }
+    else if(['ppt', 'pptx'].includes(ext)) {
+      // PowerPoint - show download link
+      previewBody.innerHTML = '';
+      const pptMessage = document.createElement("div");
+      pptMessage.style.textAlign = "center";
+      pptMessage.style.padding = "20px";
+      
+      const pptIcon = document.createElement("div");
+      pptIcon.textContent = "📊";
+      pptIcon.style.fontSize = "48px";
+      pptMessage.appendChild(pptIcon);
+      
+      const message = document.createElement("p");
+      message.textContent = "PowerPoint preview is not available.";
+      message.style.margin = "16px 0";
+      pptMessage.appendChild(message);
+      
+      const downloadLink = document.createElement("a");
+      downloadLink.href = URL.createObjectURL(file);
+      downloadLink.download = fileObj.name;
+      downloadLink.textContent = "Download Presentation";
+      downloadLink.className = "upload-btn";
+      downloadLink.style.display = "inline-block";
+      downloadLink.style.textDecoration = "none";
+      pptMessage.appendChild(downloadLink);
+      
+      previewBody.appendChild(pptMessage);
+    }
+    else {
+      // Generic file - show download option
+      previewBody.innerHTML = '';
+      const genericMessage = document.createElement("div");
+      genericMessage.style.textAlign = "center";
+      genericMessage.style.padding = "20px";
+      
+      const fileIcon = document.createElement("div");
+      fileIcon.textContent = "📄";
+      fileIcon.style.fontSize = "48px";
+      genericMessage.appendChild(fileIcon);
+      
+      const message = document.createElement("p");
+      message.textContent = "No preview available for this file type.";
+      message.style.margin = "16px 0";
+      genericMessage.appendChild(message);
+      
+      const downloadLink = document.createElement("a");
+      downloadLink.href = URL.createObjectURL(file);
+      downloadLink.download = fileObj.name;
+      downloadLink.textContent = "Download File";
+      downloadLink.className = "upload-btn";
+      downloadLink.style.display = "inline-block";
+      downloadLink.style.textDecoration = "none";
+      genericMessage.appendChild(downloadLink);
+      
+      previewBody.appendChild(genericMessage);
+    }
+  }
+
+  function openPreview() {
+    previewModal.classList.add("active");
+    document.body.style.overflow = "hidden"; // Prevent background scrolling
+  }
+
+  function closePreview() {
+    previewModal.classList.remove("active");
+    previewBody.innerHTML = "";
+    document.body.style.overflow = ""; // Restore scrolling
+  }
+
+  // Close modal when clicking outside or pressing Escape
+  previewModal.addEventListener('click', e => {
+    if(e.target === previewModal) closePreview();
+  });
+  window.addEventListener('keydown', e => {
+    if(e.key === 'Escape') closePreview();
+  });
+
+  // Local storage persistence
+  function saveToLocalStorage() {
+    try {
+      // We can't store File objects directly, so we'll just save folder structure
+      const foldersToSave = folders.map(folder => {
+        return {
+          name: folder.name,
+          isTrash: folder.isTrash,
+          // Store only file names, not actual file objects
+          files: folder.files.map(f => ({ name: f.name, originalFolder: f.originalFolder }))
+        };
+      });
+      localStorage.setItem('fileManagerFolders', JSON.stringify(foldersToSave));
+      localStorage.setItem('fileManagerSelectedFolder', selectedFolderIndex.toString());
+    } catch (e) {
+      console.error('Error saving to localStorage:', e);
+    }
+  }
+
+  function loadFromLocalStorage() {
+    try {
+      const savedFolders = localStorage.getItem('fileManagerFolders');
+      const savedSelectedFolder = localStorage.getItem('fileManagerSelectedFolder');
+      const lastVisitDate = localStorage.getItem('fileManagerLastVisit');
+      const today = new Date().toDateString();
+      
+      // If it's a new day, ask if user wants to start fresh
+      if (lastVisitDate && lastVisitDate !== today) {
+        if (confirm("Welcome back! Would you like to start a new session?")) {
+          // Reset to initial state
+          folders = [
+            { name: "Trash", isTrash: true, files: [] },
+            { name: "My Folder", files: [] }
+          ];
+          selectedFolderIndex = 1;
+        } else {
+          // Load saved data
+          if (savedFolders) {
+            const parsedFolders = JSON.parse(savedFolders);
+            folders = parsedFolders.map(folder => ({
+              name: folder.name,
+              isTrash: folder.isTrash,
+              files: folder.files.map(f => ({ name: f.name, originalFolder: f.originalFolder }))
+            }));
+          }
+          
+          if (savedSelectedFolder) {
+            const index = parseInt(savedSelectedFolder);
+            if (!isNaN(index) && index >= 0 && index < folders.length) {
+              selectedFolderIndex = index;
+            }
+          }
+        }
+      } else {
+        // Load saved data as normal
+        if (savedFolders) {
+          const parsedFolders = JSON.parse(savedFolders);
+          folders = parsedFolders.map(folder => ({
+            name: folder.name,
+            isTrash: folder.isTrash,
+            files: folder.files.map(f => ({ name: f.name, originalFolder: f.originalFolder }))
+          }));
+        }
+        
+        if (savedSelectedFolder) {
+          const index = parseInt(savedSelectedFolder);
+          if (!isNaN(index) && index >= 0 && index < folders.length) {
+            selectedFolderIndex = index;
+          }
+        }
+      }
+      
+      // Update last visit date
+      localStorage.setItem('fileManagerLastVisit', today);
+    } catch (e) {
+      console.error('Error loading from localStorage:', e);
+    }
+  }
+
+  // Add keyboard accessibility for folder and file actions
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && previewModal.classList.contains('active')) {
+      closePreview();
+    }
+  });
+
+  // Handle file input accessibility
+  const uploadLabel = document.getElementById('uploadLabel');
+  uploadLabel.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  // Initial render
+  loadFromLocalStorage(); // Load saved data first
+  renderFolders();
+  renderFiles();
+
+  // Save changes when window unloads
+  window.addEventListener('beforeunload', saveToLocalStorage);
+
+  // Session management
+  function startNewSession() {
+  if (confirm("Start a new session? This will clear your current session AND all saved data.")) {
+    // Clear everything from localStorage
+    localStorage.removeItem('fileManagerFolders');
+    localStorage.removeItem('fileManagerSelectedFolder');
+    localStorage.removeItem('fileManagerLastVisit');
+
+    // Reset in-memory folders
+    folders = [
+      { name: "Trash", isTrash: true, files: [] },
+      { name: "My Folder", files: [] }
+    ];
+    selectedFolderIndex = 1;
+    searchTerm = "";
+    matchingFolderIndices.clear();
+
+    // Clear UI search input
+    searchInput.value = "";
+
+    // Refresh UI
+    renderFolders();
+    renderFiles();
+  }
+}
+
+
+  function clearAllData() {
+    if (confirm("Are you sure you want to clear ALL saved data? This cannot be undone.")) {
+      // Clear localStorage
+      localStorage.removeItem('fileManagerFolders');
+      localStorage.removeItem('fileManagerSelectedFolder');
+      
+      // Reset to initial state
+      folders = [
+        { name: "Trash", isTrash: true, files: [] },
+        { name: "My Folder", files: [] }
+      ];
+      selectedFolderIndex = 1;
+      searchTerm = "";
+      matchingFolderIndices.clear();
+      
+      // Clear search input
+      searchInput.value = "";
+      
+      // Re-render everything
+      renderFolders();
+      renderFiles();
+    }
+  }
+</script>
+
+</body>
+</html>
