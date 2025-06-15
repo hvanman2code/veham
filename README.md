@@ -1,1 +1,1 @@
-- 📁 Folder management (create, rename, delete) for madam
+- 📁 Folder management (create, rename, delete)
